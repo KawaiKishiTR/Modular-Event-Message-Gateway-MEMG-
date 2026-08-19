@@ -16,7 +16,7 @@ def main():
     APP_CONF = AppConfig.from_yaml("config\\config.yaml")
 
     print_appinfo()
-    asyncio.run(MainBus().emit("start_app"))
+    asyncio.run(MainBus().emit(MainBus.Events.START_APP))
 
 def load_env_variables():
     global APP_NAME;        APP_NAME        = os.getenv("APP_NAME") 

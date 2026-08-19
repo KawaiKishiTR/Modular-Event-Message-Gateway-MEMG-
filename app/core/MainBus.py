@@ -1,13 +1,15 @@
+import functools
 from typing import Callable
 from collections import defaultdict
 
-from app.core import AsyncTaskManager
-from app.core.Mixins import SingletonMixin
-
+from .AsyncTaskManager import AsyncTaskManager
+from .Mixins import SingletonMixin
+from .MainBusEnums import MainBusEnums
 
 
 class MainBus(SingletonMixin):
     """Event bus class for handling events"""
+    Events = MainBusEnums
 
     def __init__(self) -> None:
         super().__init__()
@@ -15,19 +17,32 @@ class MainBus(SingletonMixin):
             return
         self.subscribers:dict[str, list[Callable]] = defaultdict(list)
 
-    def subscribe(self, event_type:str, callback:Callable):
-        if callback not in self.subscribers[event_type]:
-            self.subscribers[event_type].append(callback)
+    def subscribe(self, event_type:MainBusEnums | str, callback:Callable):
+        key = self.normalize_event_type(event_type)
+        if callback not in self.subscribers[key]:
+            self.subscribers[key].append(callback)
 
-    def unsubscribe(self, event_type:str, callback:Callable):
-        if callback in self.subscribers[event_type]:
-            self.subscribers[event_type].remove(callback)
+    def unsubscribe(self, event_type:MainBusEnums | str, callback:Callable):
+        key = self.normalize_event_type(event_type)
+        if callback in self.subscribers[key]:
+            self.subscribers[key].remove(callback)
 
-    async def emit(self, event_type:str, *args, **kwargs):
+    async def emit(self, event_type:MainBusEnums | str, *args, **kwargs):
+        key = self.normalize_event_type(event_type)
+
         TaskManager = AsyncTaskManager()
-        self._log(event_type, *args, **kwargs)
-        for callback in self.subscribers.get(event_type, []):
-            TaskManager.add(callback, name=f"[MAIN BUS] callback of event {event_type}")
+        self._log(key, *args, **kwargs)
+        for callback in self.subscribers.get(key, []):
+            if args or kwargs:
+                wrapped_cb = functools.partial(callback, *args, **kwargs)
+            else:
+                wrapped_cb = callback
+            
+            TaskManager.add(wrapped_cb, name=f"[MAIN BUS] callback of event {key}")
+
+    @staticmethod
+    def normalize_event_type(event_type:MainBusEnums | str) -> str:
+        return event_type.name if isinstance(event_type, MainBusEnums) else str(event_type)
 
     @staticmethod
     def _log(event_type:str, *args, **kwargs):
