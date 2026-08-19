@@ -1,7 +1,7 @@
-import asyncio
 from typing import Callable
 from collections import defaultdict
 
+from app.core import AsyncTaskManager
 from app.core.Mixins import SingletonMixin
 
 
@@ -23,10 +23,11 @@ class MainBus(SingletonMixin):
         if callback in self.subscribers[event_type]:
             self.subscribers[event_type].remove(callback)
 
-    def emit(self, event_type:str, *args, **kwargs):
+    async def emit(self, event_type:str, *args, **kwargs):
+        TaskManager = AsyncTaskManager()
         self._log(event_type, *args, **kwargs)
         for callback in self.subscribers.get(event_type, []):
-            callback(*args, **kwargs)
+            TaskManager.add(callback, name=f"[MAIN BUS] callback of event {event_type}")
 
     @staticmethod
     def _log(event_type:str, *args, **kwargs):
@@ -44,5 +45,4 @@ class MainBus(SingletonMixin):
             with_ = True
         if not with_:
             msg += " with no arguments"
-
         print(msg)
