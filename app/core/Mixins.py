@@ -1,4 +1,4 @@
-
+import threading
 
 
 
@@ -7,14 +7,20 @@ class SingletonMixin:
 
     Thread-safe (İş parçacığı güvenli) yapıdadır.
     """
-    __instance = None
+    _instances = {}
+    _lock = threading.Lock()
 
     def __new__(cls, *args, **kwargs):
-        if cls.__instance is None:
-            cls.__instance = super().__new__(cls)
-        return cls.__instance
+        if cls not in cls._instances:
+            with cls._lock:
+                # Çift kontrollü kilitleme (Double-Checked Locking) deseni
+                if cls not in cls._instances:
+                    instance = super().__new__(cls)
+                    cls._instances[cls] = instance
+        return cls._instances[cls]
 
     def __init__(self) -> None:
-        if getattr(self, "_is_initialized", False):
+        if hasattr(self, "_is_initialized"):
+            self._is_initialized = True
             return
-        self._is_initialized = True
+        self._is_initialized = False

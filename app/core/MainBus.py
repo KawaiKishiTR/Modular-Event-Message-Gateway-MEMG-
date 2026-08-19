@@ -1,3 +1,4 @@
+import asyncio
 from typing import Callable
 from collections import defaultdict
 
@@ -10,6 +11,8 @@ class MainBus(SingletonMixin):
 
     def __init__(self) -> None:
         super().__init__()
+        if self._is_initialized:
+            return
         self.subscribers:dict[str, list[Callable]] = defaultdict(list)
 
     def subscribe(self, event_type:str, callback:Callable):
