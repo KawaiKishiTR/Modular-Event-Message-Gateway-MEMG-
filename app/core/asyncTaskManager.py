@@ -1,14 +1,14 @@
 import inspect
 import typing
 import asyncio
+import functools
 from typing import Any, Callable
 
-from app.core.Mixins import SingletonMixin
+from .Mixins import SingletonMixin
 
 
 class AsyncTaskManager(SingletonMixin):
     def __init__(self):
-        super().__init__()
         if self._is_initialized:
             return
 
@@ -26,6 +26,13 @@ class AsyncTaskManager(SingletonMixin):
         except Exception as e:
             print(f"[ASYNC RUNNER][TASK ERROR] on task: {task.get_name()} <> {e}")
 
+    @staticmethod
+    def _is_async_callable(target: Any) -> bool:
+        """partial veya custom callable olsa dahi async olup olmadığını kontrol eder."""
+        while isinstance(target, functools.partial):
+            target = target.func
+        return inspect.iscoroutinefunction(target) or inspect.iscoroutinefunction(getattr(target, "__call__", None))
+
     def add(self, target: Any,
             done_callback:list[Callable] | None = None,
             name:str | None = None
@@ -33,12 +40,17 @@ class AsyncTaskManager(SingletonMixin):
 
         if isinstance(target, asyncio.Task):
             return self.add_task(target, done_callback=done_callback, name=name)
+        
         if inspect.iscoroutine(target):
             return self.add_coroutine(target, done_callback=done_callback, name=name)
-        if inspect.iscoroutinefunction(target):
+        
+        if inspect.iscoroutinefunction(target) or self._is_async_callable(target):
             return self.add_coroutine(target(), done_callback=done_callback, name=name)
+        
         if callable(target):
             return self.add_regular_function(target, done_callback=done_callback, name=name)
+        
+        raise TypeError(f"Unsupported target type for AsyncTaskManager: {type(target)}")
 
     def add_regular_function(self, func:Callable,
                             done_callback:list[Callable] | None = None,

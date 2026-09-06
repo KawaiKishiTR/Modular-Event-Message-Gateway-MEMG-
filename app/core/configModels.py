@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 
-from app.core.configManager import BaseConfigModel
-
+from .configManager import BaseConfigModel
 
 @dataclass
 class NetworkConfig(BaseConfigModel):

@@ -2,7 +2,7 @@ import functools
 from typing import Callable
 from collections import defaultdict
 
-from .AsyncTaskManager import AsyncTaskManager
+from .asyncTaskManager import AsyncTaskManager
 from .Mixins import SingletonMixin
 from .MainBusEnums import MainBusEnums
 
@@ -12,7 +12,6 @@ class MainBus(SingletonMixin):
     Events = MainBusEnums
 
     def __init__(self) -> None:
-        super().__init__()
         if self._is_initialized:
             return
         self.subscribers:dict[str, list[Callable]] = defaultdict(list)
