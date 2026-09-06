@@ -1,6 +1,8 @@
+import types
+from typing import Any, Callable, Union, get_args, get_origin
+from dataclasses import fields
 import threading
-
-
+import json
 
 class SingletonMixin:
     """Tüm alt sınıfları Singleton yapan Mixin sınıfı.
@@ -17,10 +19,9 @@ class SingletonMixin:
                 if cls not in cls._instances:
                     instance = super().__new__(cls)
                     cls._instances[cls] = instance
-        return cls._instances[cls]
-
-    def __init__(self) -> None:
-        if hasattr(self, "_is_initialized"):
-            self._is_initialized = True
-            return
-        self._is_initialized = False
+        ins = cls._instances[cls]
+        if hasattr(ins, "_is_initialized"):
+            ins._is_initialized = True
+        else:
+            ins._is_initialized = False
+        return ins
