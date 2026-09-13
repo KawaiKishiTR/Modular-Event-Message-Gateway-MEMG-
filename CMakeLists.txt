@@ -1,27 +1,23 @@
 cmake_minimum_required(VERSION 3.16)
-project(MEMG C)
+project(memg_ipc VERSION 1.0.0 LANGUAGES CXX)
 
-# C standardını belirleme
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Kaynak kodları (.c) derleyerek bir statik kütüphane (static library) haline getirme
-add_library(memg_socket STATIC
-    src/socket/common.c
-    src/socket/socket.c
+# Kütüphane kaynakları
+add_library(memg_ipc SHARED
+    src/memg_ipc/config.cpp
+    src/memg_ipc/epoll.cpp
+    src/memg_ipc/socket.cpp
+    src/memg_ipc/node.cpp
 )
 
-add_executable(memg_main 
-    src/main.c
+target_include_directories(memg_ipc PUBLIC 
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
 
-# Header (.h) arama yollarını kütüphaneye bağlama (include directories)
-target_include_directories(memg_socket PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/include
-)
-
-target_link_libraries(memg_main memg_socket)
-
-# pthread kütüphanesini bağlama (thread kullanacaksanız)
-find_package(Threads REQUIRED)
-target_link_libraries(memg_socket PUBLIC Threads::Threads)
+# Kurulum hedefleri (sudo make install için)
+install(TARGETS memg_ipc LIBRARY DESTINATION /usr/local/lib)
+install(DIRECTORY include/memg_ipc DESTINATION /usr/local/include)
