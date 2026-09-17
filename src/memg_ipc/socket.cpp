@@ -145,32 +145,38 @@ ssize_t UnixSocket::send_to(const std::string& target_path, const void* data, si
         throw_system_error("Hedef soket yolu gecersiz");
     }
 
-    sockaddr_un addr{};
+    sockaddr_un addr;
+    std::memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     std::strncpy(addr.sun_path, target_path.c_str(), sizeof(addr.sun_path) - 1);
 
     // 4 baytlık boyutu Big-Endian formatına çevir
     uint32_t payload_size_net = htonl(static_cast<uint32_t>(size));
 
-    // Ekstra memcpy yapmamak için iovec (Scatter-Gather) kullanıyoruz
+    // Scatter-gather tampon dizisi
     struct iovec iov[2];
-
     iov[0].iov_base = &payload_size_net;
     iov[0].iov_len  = sizeof(payload_size_net);
-    iov[0].iov_base = const_cast<void*>(data);
-    iov[0].iov_len  = size;
+    iov[1].iov_base = const_cast<void*>(data);
+    iov[1].iov_len  = size;
 
-    struct msghdr msg{};
-    msg.msg_name    = reinterpret_cast<struct sockaddr*>(&addr);
-    msg.msg_namelen = sizeof(addr);
+    // msghdr yapısını memset ile tamamen sıfırlayın!
+    struct msghdr msg;
+    std::memset(&msg, 0, sizeof(msg));
+    msg.msg_name    = &addr;
+    // AF_UNIX için gerçek yol uzunluğu:
+    msg.msg_namelen = sizeof(addr.sun_family) + std::strlen(addr.sun_path) + 1;
     msg.msg_iov     = iov;
     msg.msg_iovlen  = 2;
+    msg.msg_control = nullptr;
+    msg.msg_controllen = 0;
+    msg.msg_flags   = 0;
 
-    // Tek bir datagram paketi olarak [4 Byte Boyut] + [Data] şeklinde fırlat
     ssize_t sent = sendmsg(_fd, &msg, 0);
-    if (sent < 0) throw_system_error("sendmsg hatasi: " + target_path);
+    if (sent < 0) {
+        throw_system_error("sendmsg hatasi: " + target_path);
+    }
 
-    // Çağıran tarafa yalnızca iletilen net payload boyutunu döndür
     return sent >= static_cast<ssize_t>(sizeof(payload_size_net))
             ? (sent - sizeof(payload_size_net))
             : 0;
