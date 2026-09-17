@@ -32,13 +32,16 @@ struct TokenPayload {
     char token[48]; // Servis kimliği (örn: "io.memg.service.rgb")
 };
 
+typedef union Payload {
+    uint8_t         data[48];
+    TokenPayload    subscriber;
+    TokenPayload    sender;
+} payload_t;
+
 // Sabit Protokol Taşıyıcı Paketi (Header + 48 Byte Sabit Payload)
 struct ControlPacket {
-    PacketHeader header;
-    union {
-        uint8_t      data[48];
-        TokenPayload subscriber;
-    } payload;
+    PacketHeader    header;
+    payload_t       payload;
 };
 
 #pragma pack(pop)
