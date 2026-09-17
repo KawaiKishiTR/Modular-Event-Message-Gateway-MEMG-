@@ -20,4 +20,4 @@ target_include_directories(memg_ipc PUBLIC
 
 # Kurulum hedefleri (sudo make install için)
 install(TARGETS memg_ipc LIBRARY DESTINATION /usr/local/lib)
-install(DIRECTORY include/memg_ipc DESTINATION /usr/local/include)
+install(DIRECTORY src/include/memg_ipc DESTINATION /usr/local/include)
