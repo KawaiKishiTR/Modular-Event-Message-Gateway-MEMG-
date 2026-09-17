@@ -1,4 +1,5 @@
 #include "memg_ipc/node.hpp"
+#include <string>
 #include <vector>
 
 namespace memg {
@@ -6,7 +7,7 @@ namespace memg {
 MemgNode::MemgNode(const ServiceConfig& cfg) 
     : _cfg(cfg), _poller(cfg.max_events) {
     
-    _resolved_path = Registry::resolve(_cfg.token);
+    _resolved_path = Registry::resolve(std::string(_cfg.token));
 
     if (_cfg.is_server) {
         Registry::ensure_directory(_resolved_path);
