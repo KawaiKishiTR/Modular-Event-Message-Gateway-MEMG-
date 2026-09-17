@@ -1,4 +1,6 @@
+#include "memg_ipc/protocol.hpp"
 #include "memg_ipc/node.hpp"
+#include <cstring>
 #include <iostream>
 #include <csignal>
 #include <atomic>
@@ -21,9 +23,10 @@ void signal_handler(int sig) {
 int main() {
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
+    char token[] = "io.memg.service.test";
 
     memg::ServiceConfig cfg;
-    cfg.token = "io.memg.service.test";
+    strncpy(cfg.token, token, sizeof(token));
     cfg.is_server = true;
     cfg.timeout_ms = 1000; // 1 saniyede bir tick tetiklensin
 
@@ -35,12 +38,14 @@ int main() {
 
         server_node.run(
             // 1. Paket geldiginde calisacak callback:
-            [](const uint8_t* data, size_t size) {
-                std::string msg(reinterpret_cast<const char*>(data), size);
+            [](const memg::payload_t data, size_t size) {
+                std::string msg(reinterpret_cast<const char*>(data.data), size);
                 std::cout << "[SERVER] Paket Alindi (" << size << " bayt): " << msg << std::endl;
             },
             // 2. Timeout (Tick) callback:
-            []() {
+            [&server_node]() {
+                char msg[] = "Veri Bekliyorum Nerede Kaldı verilerim...";
+                server_node.publish(msg, sizeof(msg));
                 std::cout << "[SERVER] [Tick] Veri bekleniyor..." << std::endl;
             }
         );
