@@ -18,6 +18,13 @@ target_include_directories(memg_ipc PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
+# 2. Test Executable'ları
+add_executable(test_server src/test_server.cpp)
+target_link_libraries(test_server PRIVATE memg_ipc)
+
+add_executable(test_client src/test_client.cpp)
+target_link_libraries(test_client PRIVATE memg_ipc)
+
 # Kurulum hedefleri (sudo make install için)
 install(TARGETS memg_ipc LIBRARY DESTINATION /usr/local/lib)
 install(DIRECTORY src/include/memg_ipc DESTINATION /usr/local/include)
