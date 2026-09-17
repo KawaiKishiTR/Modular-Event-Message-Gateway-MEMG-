@@ -34,7 +34,6 @@ struct TokenPayload {
 
 typedef union Payload {
     uint8_t         data[48];
-    TokenPayload    subscriber;
     TokenPayload    sender;
 } payload_t;
 
