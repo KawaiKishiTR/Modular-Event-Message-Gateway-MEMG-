@@ -6,7 +6,7 @@
 namespace memg {
 
 struct ServiceConfig {
-    std::string token;          // Örn: "io.memg.service.rgb"
+    char token[48];          // Örn: "io.memg.service.rgb"
     bool is_server{false};      // Dinleyici mi, istemci mi?
     int timeout_ms{16};         // -1: Sonsuz uyku, >0: Periyodik tick (animasyon/timer)
     uint32_t max_events{64};
