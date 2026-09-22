@@ -1,6 +1,7 @@
 #include "memg_ipc/node.hpp"
 #include "memg_ipc/config.hpp"
 #include "memg_ipc/protocol.hpp"
+#include "memg_ipc/node_helper.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -45,75 +46,87 @@ bool MemgNode::send_packet(const std::string& target_token, const ControlPacket&
 
 bool MemgNode::send(const std::string& target_token, const void* data, size_t size) {
     ControlPacket pkt{};
-    pkt.header.type = PacketType::APPLICATION_DATA;
+    pkt.header.flags = PacketFlag::NONE;
 
-    if (size > sizeof(pkt.payload.data)) {
+    if (size > sizeof(pkt.body.data)) {
         std::cerr << "[MEMG] [send] Hata: Veri boyutu (" << size 
             << " bayt) maksimum payload kapasitesini (" 
-            << sizeof(pkt.payload.data) << " bayt) asiyor!\n";
+            << sizeof(pkt.body.data) << " bayt) asiyor!\n";
     }
 
-    std::memcpy(pkt.payload.data, data, size);
+    std::memcpy(pkt.body.data, data, size);
     return send_packet(target_token, pkt);
 }
 
 bool MemgNode::subscribe(const std::string& target_service_token) {
     ControlPacket pkt{};
-    pkt.header.type = PacketType::SUBSCRIBE;
+    pkt.header.type = static_cast<uint16_t>(SystemCommand::SUBSCRIBE);
+    pkt.header.flags = PacketFlag::IN_SYSTEM;
 
-    std::strncpy(pkt.payload.sender.token, _cfg.token, sizeof(pkt.payload.sender.token) - 1);
+    std::strncpy(pkt.body.sender.token, _cfg.token, sizeof(pkt.body.sender.token) - 1);
     return send_packet(target_service_token, pkt);
 }
 
 bool MemgNode::unsubscribe(const std::string& target_service_token) {
     ControlPacket pkt{};
-    pkt.header.type = PacketType::UNSUBSCRIBE;
+    pkt.header.type = static_cast<uint16_t>(SystemCommand::UNSUBSCRIBE);
+    pkt.header.flags = PacketFlag::IN_SYSTEM;
 
-    std::strncpy(pkt.payload.sender.token, _cfg.token, sizeof(pkt.payload.sender.token) - 1);
+    std::strncpy(pkt.body.sender.token, _cfg.token, sizeof(pkt.body.sender.token) - 1);
     return send_packet(target_service_token, pkt);
 }
 
-bool MemgNode::on_system_packet(const memg::ControlPacket* packet) {
-    if (packet->header.magic != 0x4D47) return true; // magic hatalı ise yut
-
-    switch (packet->header.type) {
-        case PacketType::SUBSCRIBE: {
-            std::string sub_token(packet->payload.sender.token,
-                        strnlen(packet->payload.sender.token, 
-                                sizeof(packet->payload.sender.token)));
-            if (!sub_token.empty()) {
-                _subscribers.insert(sub_token);
-                std::cout << "[MEMG] Abone eklendi: " << sub_token << "\n";
-            }
-            return true;
-        }
-        case PacketType::UNSUBSCRIBE: {
-            std::string sub_token(packet->payload.sender.token,
-                        strnlen(packet->payload.sender.token, 
-                            sizeof(packet->payload.sender.token)));
-            _subscribers.erase(sub_token);
-            std::cout << "[MEMG] Abone cikarildi: " << sub_token << "\n";
-            return true;
-        }
-        case PacketType::HEARTBEAT: {
-            //TODO: return HEARTBEAT_RESP in here
-            ControlPacket pkt{};
-            pkt.header.type = PacketType::HEARTBEAT_RESP;
-            strncpy(pkt.payload.sender.token, _cfg.token, sizeof(pkt.payload.sender.token) - 1);
-
-            std::string target_token(packet->payload.sender.token,
-                strnlen(packet->payload.sender.token, sizeof(packet->payload.sender.token)));
-
-            send_packet(target_token, pkt);
-            return true;
-        }
-        case PacketType::HEARTBEAT_RESP:
-            std::cout << "[MEMG] [HEARTBEAT_RESP] token: " << packet->payload.sender.token; 
-            return true;
-        case PacketType::APPLICATION_DATA:
-            return false; // this handled in MemgNode::run > on_packet
-        default: return true; // bilinmeyen paketleri yut
+bool MemgNode::on_system_packet_subscribe(const memg::ControlPacket* packet) {
+    std::string sub_token(packet->body.sender.token,
+                strnlen(packet->body.sender.token, 
+                        sizeof(packet->body.sender.token)));
+    if (!sub_token.empty()) {
+        _subscribers.insert(sub_token);
+        std::cout << "[MEMG] Abone eklendi: " << sub_token << "\n";
     }
+    return true;
+}
+
+bool MemgNode::on_system_packet_unsubscribe(const memg::ControlPacket* packet) {
+    std::string sub_token(packet->body.sender.token,
+            strnlen(packet->body.sender.token, 
+                    sizeof(packet->body.sender.token)));
+    _subscribers.erase(sub_token);
+    std::cout << "[MEMG] Abone cikarildi: " << sub_token << "\n";
+    return true;  
+}
+
+bool MemgNode::on_system_packet_heartbeat(const memg::ControlPacket* packet) {
+    ControlPacket pkt{};
+    pkt.header.flags = PacketFlag::IN_SYSTEM;
+    pkt.header.type = static_cast<uint16_t>(SystemCommand::HEARTBEAT_RESP);
+
+    strncpy(pkt.body.sender.token, _cfg.token, sizeof(pkt.body.sender.token) - 1);
+
+    std::string target_token(packet->body.sender.token,
+        strnlen(packet->body.sender.token, sizeof(packet->body.sender.token)));
+
+    send_packet(target_token, pkt);
+    return true;
+}
+
+bool MemgNode::on_system_packet_heartbeat_resp(const memg::ControlPacket* packet) {
+    std::cout << "[MEMG] [HEARTBEAT_RESP] token: " << packet->body.sender.token; 
+    return true;
+}
+
+bool MemgNode::on_system_packet(const memg::ControlPacket* packet) {
+    uint16_t type = packet->header.type;
+
+           if (type == static_cast<uint16_t>(SystemCommand::SUBSCRIBE)) {
+        return on_system_packet_subscribe(packet);
+    } else if (type == static_cast<uint16_t>(SystemCommand::UNSUBSCRIBE)) {
+        return on_system_packet_unsubscribe(packet);   
+    } else if (type == static_cast<uint16_t>(SystemCommand::HEARTBEAT)) {
+        return on_system_packet_heartbeat(packet);
+    } else if (type == static_cast<uint16_t>(SystemCommand::HEARTBEAT_RESP)) {
+        return on_system_packet_heartbeat_resp(packet);
+    } else return false;
 }
 
 void MemgNode::publish(const void* data, size_t size) {
@@ -156,12 +169,15 @@ void MemgNode::run(PacketCallback on_packet, TickCallback on_tick) {
                 if (static_cast<size_t>(bytes) < sizeof(PacketHeader)) continue;
 
                 const ControlPacket* pkt = reinterpret_cast<const ControlPacket*>(buffer.data());
-                bool is_consumed = on_system_packet(pkt);
-                if (is_consumed) continue;
+                const PacketHeader*  hdr = reinterpret_cast<const PacketHeader* >(&pkt->header);
+                if (!validate_header(hdr)) continue; // header valid değilse devam et
 
-                if (!on_packet) continue; // on_packet fonksiyonu yoksa denemeden devam et
-                
-                on_packet(pkt->payload, static_cast<size_t>(bytes - sizeof(PacketHeader)));
+                if (has_flag(PacketFlag::IN_SYSTEM, hdr->flags)) {
+                    on_system_packet(pkt);
+                } else {
+                    if (!on_packet) continue; // on_packet fonksiyonu yoksa denemeden devam et
+                    on_packet(pkt->body, static_cast<size_t>(bytes - sizeof(PacketHeader)));
+                }
             }
         }
     }

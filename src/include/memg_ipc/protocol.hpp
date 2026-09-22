@@ -2,45 +2,83 @@
 
 #include <cstdint>
 
+
+
 namespace memg {
+
+inline constexpr uint16_t PROTOCOL_MAGIC        = 0x4D47;
+inline constexpr uint16_t PROTOCOL_VERSION      = 1;
+inline constexpr uint16_t PROTOCOL_TOKEN_SIZE   = 48;
+
 
 // Paket hizalamasını 1 bayta sabitle (Padding eklenmesini engelle)
 #pragma pack(push, 1)
 
-// Sistem ve Uygulama Komut Tipleri
-enum class PacketType : uint16_t {
-    // 0x0001 - 0x00FF: libmemg_ipc Dahili Kontrol Paketleri
-    SUBSCRIBE       = 0x0001, // Bir servise abone olma isteği
-    UNSUBSCRIBE     = 0x0002, // Abonelikten ayrılma isteği
-    HEARTBEAT       = 0x0003, // Canlılık kontrolü
-    HEARTBEAT_RESP  = 0x0004, // Canlılık yanıtı
-
-    // 0x0100 - 0xFFFF: Aplikasyon Seviyesi Veri Paketleri
-    APPLICATION_DATA = 0x0100  // RGB, Müzik spektrumu veya özel servis verisi
+// =======================
+//      PACKET HEADER
+// =======================
+enum class PacketFlag : uint16_t {
+    NONE        = 0x0000,
+    ENCRYPTED   = 0x0001,
+    COMPRESSED  = 0x0002,
+    MINIMALIZED = 0x0004,
+    IN_SYSTEM   = 0x0008, // 1: sistem kontrol paketi 0: aplikasyon verisi 
+    FORWARDED   = 0x0010,
+    NESTED      = 0x0020, // payload içinde başka bir paket var
+    SIGNED      = 0x0040  // imza / yetkilendirme doğrulaması gerekir
 };
+
+inline PacketFlag operator|(PacketFlag a, PacketFlag b) {
+    return static_cast<PacketFlag>(static_cast<uint16_t>(a) | static_cast<uint16_t>(b));
+}
+
+inline bool has_flag(PacketFlag flags, PacketFlag target) {
+    return (static_cast<uint16_t>(flags) & static_cast<uint16_t>(target)) == static_cast<uint16_t>(flags);
+}
+
+
+
+// ======================
+//  SYSTEM COMMAND FLAGS
+// ======================
+enum class SystemCommand : uint16_t {
+    SUBSCRIBE       = 0x0001,
+    UNSUBSCRIBE     = 0x0002,
+    HEARTBEAT       = 0x0003,
+    HEARTBEAT_RESP  = 0x0004,
+};
+
 
 // Sabit Boyutlu Standart Başlık (8 Bayt)
 struct PacketHeader {
-    uint16_t   magic{0x4D47};                     // 'MG' (0x4D, 0x47)
-    uint16_t   version{1};                        // Protokol sürümü
-    PacketType type{PacketType::APPLICATION_DATA};// Komut veya veri tipi
-    uint16_t   reserved{0};                       // Gelecek kullanımı için rezerv
+    uint16_t   magic{PROTOCOL_MAGIC};             // 'MG' (0x4D, 0x47)
+    uint16_t   version{PROTOCOL_VERSION};         // Protokol sürümü
+    uint16_t   type{0};                           // Komut veya veri tipi
+    PacketFlag flags{PacketFlag::NONE};           // 2 bayt bayraklar
 };
+
+
+
+
 
 // Dahili Komut: Kimlik / Servis Token'ı Belirten Paket
 struct TokenPayload {
-    char token[48]; // Servis kimliği (örn: "io.memg.service.rgb")
+    char token[PROTOCOL_TOKEN_SIZE]; // Servis kimliği (örn: "io.memg.service.rgb")
 };
 
-typedef union Payload {
-    uint8_t         data[48];
+typedef union PacketBody {
+    uint8_t         data[PROTOCOL_TOKEN_SIZE];
     TokenPayload    sender;
-} payload_t;
+} packetbody_t;
+
+
+
+
 
 // Sabit Protokol Taşıyıcı Paketi (Header + 48 Byte Sabit Payload)
 struct ControlPacket {
     PacketHeader    header;
-    payload_t       payload;
+    packetbody_t    body;
 };
 
 #pragma pack(pop)

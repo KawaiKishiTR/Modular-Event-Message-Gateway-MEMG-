@@ -12,7 +12,7 @@ namespace memg {
 
 class MemgNode {
 public:
-    using PacketCallback = std::function<void(const payload_t& data, size_t size)>;
+    using PacketCallback = std::function<void(const packetbody_t& data, size_t size)>;
     using TickCallback = std::function<void()>;
 
     explicit MemgNode(const ServiceConfig& cfg);
@@ -40,6 +40,11 @@ public:
     void publish(const void* data, size_t size);
 private:
     bool on_system_packet(const ControlPacket* packet);
+    bool on_system_packet_subscribe(const ControlPacket* packet);
+    bool on_system_packet_unsubscribe(const ControlPacket* packet);
+    bool on_system_packet_heartbeat(const ControlPacket* packet);
+    bool on_system_packet_heartbeat_resp(const ControlPacket* packet);
+    
 
     ServiceConfig _cfg;
     UnixSocket _socket;
