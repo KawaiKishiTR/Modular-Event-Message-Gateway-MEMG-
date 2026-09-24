@@ -2,7 +2,6 @@
 #include "memg_ipc/PacketReader.hpp"
 #include "memg_ipc/config.hpp"
 #include "memg_ipc/protocol.hpp"
-#include "memg_ipc/node_helper.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
