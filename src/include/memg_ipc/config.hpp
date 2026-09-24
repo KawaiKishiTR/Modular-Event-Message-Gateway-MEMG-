@@ -1,13 +1,12 @@
 #pragma once
 
-#include "memg_ipc/protocol.hpp"
 #include <string>
 #include <cstdint>
 
 namespace memg {
 
 struct ServiceConfig {
-    char token[PROTOCOL_TOKEN_SIZE]; // Örn: "io.memg.service.rgb"
+    std::string token; // Örn: "io.memg.service.rgb"
     bool is_server{false};      // Dinleyici mi, istemci mi?
     int timeout_ms{16};         // -1: Sonsuz uyku, >0: Periyodik tick (animasyon/timer)
     uint32_t max_events{64};

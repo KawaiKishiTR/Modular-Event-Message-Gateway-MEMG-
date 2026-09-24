@@ -7,12 +7,13 @@
 #include <functional>
 #include <atomic>
 #include <unordered_set>
+#include <vector>
 
 namespace memg {
 
 class MemgNode {
 public:
-    using PacketCallback = std::function<void(const packetbody_t& data, size_t size)>;
+    using PacketCallback = std::function<void(const MemgPacket* data)>;
     using TickCallback = std::function<void()>;
 
     explicit MemgNode(const ServiceConfig& cfg);
@@ -24,11 +25,15 @@ public:
     // Döngüyü dışarıdan durdurmak için (örn: SIGINT / Ctrl+C anında)
     void stop();
 
+    bool send_raw(const std::string& target_token, const void* data, size_t size);
+    
+    template<typename T>
+    bool send_vector(const std::string& target_token, const std::vector<T>* data) {
+        return send_raw(target_token, data->data(), (data->size() * sizeof(T)));
+    }
+
     // 1. Ham veri gönderme (APPLICATION_DATA başlığı ile otomatik sarar)
     bool send(const std::string& target_token, const void* data, size_t size);
-
-    // 2. Dahili/Sistem paketi fırlatma
-    bool send_packet(const std::string& target_token, const ControlPacket& pkt);
 
     // 3. Bir servise abone olma talebi atar
     bool subscribe(const std::string& target_service_token);
@@ -39,11 +44,11 @@ public:
     // 5. Kendisine abone olan tüm servislere canlı veri yayınlar (Dead Subscriber Eviction ile)
     void publish(const void* data, size_t size);
 private:
-    bool on_system_packet(const ControlPacket* packet);
-    bool on_system_packet_subscribe(const ControlPacket* packet);
-    bool on_system_packet_unsubscribe(const ControlPacket* packet);
-    bool on_system_packet_heartbeat(const ControlPacket* packet);
-    bool on_system_packet_heartbeat_resp(const ControlPacket* packet);
+    bool on_system_packet(const MemgPacket* packet);
+    bool on_system_packet_subscribe(const MemgPacket* packet);
+    bool on_system_packet_unsubscribe(const MemgPacket* packet);
+    bool on_system_packet_heartbeat(const MemgPacket* packet) ;
+    bool on_system_packet_heartbeat_resp(const MemgPacket* packet);
     
 
     ServiceConfig _cfg;
