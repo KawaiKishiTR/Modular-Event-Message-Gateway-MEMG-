@@ -32,9 +32,6 @@ public:
         return send_raw(target_token, data->data(), (data->size() * sizeof(T)));
     }
 
-    // 1. Ham veri gönderme (APPLICATION_DATA başlığı ile otomatik sarar)
-    bool send(const std::string& target_token, const void* data, size_t size);
-
     // 3. Bir servise abone olma talebi atar
     bool subscribe(const std::string& target_service_token);
 

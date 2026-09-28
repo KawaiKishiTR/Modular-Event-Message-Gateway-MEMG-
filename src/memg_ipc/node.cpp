@@ -111,7 +111,7 @@ void MemgNode::publish(const void* data, size_t size) {
     auto it = _subscribers.begin();
     while (it != _subscribers.end()) {
         const std::string& sub_token = *it;
-        bool ok = send(sub_token, data, size);
+        bool ok = send_raw(sub_token, data, size);
         if (!ok) {
             std::cout << "[MEMG] Aboneye erisilemedi, listeden siliniyor: " << sub_token << "\n";
             it = _subscribers.erase(it);
