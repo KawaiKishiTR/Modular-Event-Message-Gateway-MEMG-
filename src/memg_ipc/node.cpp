@@ -148,6 +148,7 @@ void MemgNode::run(PacketCallback on_packet, TickCallback on_tick) {
 
                 const MemgPacket     packet(buffer.begin(), buffer.begin() + bytes);
                 PacketReader reader(packet.data(), packet.size());
+                if (!reader.is_valid()) {continue;}
 
                 if (has_flag(PacketFlag::IN_SYSTEM, static_cast<PacketFlag>(reader.flags()))) {
                     on_system_packet(&packet);
