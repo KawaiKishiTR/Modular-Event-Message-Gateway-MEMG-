@@ -37,6 +37,7 @@ inline PacketFlag operator|(PacketFlag a, PacketFlag b) {
 }
 
 inline bool has_flag(PacketFlag flags, PacketFlag target) {
+    if (static_cast<uint16_t>(target) == 0) return false;
     return (static_cast<uint16_t>(flags) & static_cast<uint16_t>(target)) == static_cast<uint16_t>(target);
 }
 

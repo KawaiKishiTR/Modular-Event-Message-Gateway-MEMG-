@@ -142,7 +142,7 @@ ssize_t UnixSocket::receive(void* buffer, size_t size) {
 ssize_t UnixSocket::send_to(const std::string& target_path, const void* data, size_t size) {
     if (target_path.empty() || target_path.length() >= sizeof(sockaddr_un::sun_path)) {
         errno = EINVAL;
-        throw_system_error("Hedef soket yolu gecersiz");
+        throw_system_error("Hedef soket yolu gecersiz: " + target_path);
     }
 
     sockaddr_un addr;
