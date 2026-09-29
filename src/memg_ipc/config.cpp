@@ -1,6 +1,7 @@
 #include "memg_ipc/config.hpp"
 #include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <algorithm>
@@ -23,26 +24,31 @@ bool Registry::ensure_directory(const std::string& file_path) {
 //resolve helper functions
 bool resolve_enviroment     (const std::string& token, std::string& out_value);
 bool resolve_config_file    (const std::string& token, std::string& out_value);
+bool parse_config_file      (const std::string& token, std::ifstream& file, std::string& out_value);
+
 bool resolve_XDG_RUNTIME_DIR(const std::string& token, std::string& out_value);
 
 // actual resolve function
 std::string Registry::resolve(const std::string& token) {
     std::string toReturn;
-    // 1. Ortam Değişkeni Kontrolü (Örn: MEMG_TOKEN_IO_MEMG_RGB=/custom/path.sock)
-    if (resolve_enviroment(token, toReturn)) {
-        return toReturn;
+
+    do {
+        // 1. Ortam Değişkeni Kontrolü (Örn: MEMG_TOKEN_IO_MEMG_RGB=/custom/path.sock)
+        if (resolve_enviroment(token, toReturn)) break;
+
+        // 2. Config Dosyası Kontrolü (~/.config/memg/endpoints.conf)
+        if (resolve_config_file(token, toReturn)) break;
+
+        // 3. Fallback: XDG_RUNTIME_DIR veya /tmp/memg/
+        if (resolve_XDG_RUNTIME_DIR(token, toReturn)) break;
+    } while (0);
+
+    if (toReturn.empty()) {
+        throw std::runtime_error("No matching resolve function can resolve the token: " + token);
     }
 
-    // 2. Config Dosyası Kontrolü (~/.config/memg/endpoints.conf)
-    if (resolve_config_file(token, toReturn)) {
-        return toReturn;
-    }
-
-    // 3. Fallback: XDG_RUNTIME_DIR veya /tmp/memg/
-    if (resolve_XDG_RUNTIME_DIR(token, toReturn)) {
-        return toReturn;
-    }
-    throw std::system_error(errno, std::generic_category(), "No matching resolve function can resolve the token: " + token);
+    std::cout << "[DEBUG] token: " << token << " resolved to: " << toReturn << "\n";
+    return toReturn;
 }
 
 bool resolve_enviroment(const std::string& token, std::string& out_value) {
@@ -58,29 +64,45 @@ bool resolve_enviroment(const std::string& token, std::string& out_value) {
 
 bool resolve_config_file(const std::string& token, std::string& out_value) {
     const char* home = std::getenv("HOME");
-    if (!home) return false;
-
+    std::ifstream file;
     std::string toReturn;
-    std::ifstream file(std::string(home) + "/.config/memg/endpoints.conf");
-    
-    if (!file.is_open()) return false;
+
+    if (home && home[0] != '\0') {
+        file.open(std::string(home) + "/.config/memg/endpoints.conf");
+    }
+
+    if (!file.is_open()) {
+        file.open("/etc/memg/endpoints.conf");
+    }
+
+    if (!file.is_open()) {
+        return false;
+    }
+
+    parse_config_file(token, file, toReturn);
+
+    if (toReturn.empty()) return false;
+    out_value.assign(toReturn);
+    return true;
+}
+
+bool parse_config_file(const std::string& token, std::ifstream& file, std::string& out_value) {
     std::string line;
-
+    std::string toReturn;
     while (std::getline(file, line)) {
-        if (line.empty() || line[0] == '#') continue; //boşsa yada tamamen yorumsa geç
-
+        if (line.empty() || line[0] == '#') continue; // boşsa geç
         size_t sep = line.find('=');
         if (sep == std::string::npos) continue; // '=' sembolü yoksa geç
 
-        std::string key = line.substr(0, sep);
-        std::string remain = line.substr(sep + 1);
-        if (key != token) continue; // key aradığımız key değilse geç
+        std::string key     = line.substr(0, sep);
+        std::string remain  = line.substr(sep + 1);
+        if (key != token) continue; // key aradığımız ile eşleşmiyorsa geç
 
-        size_t cmd = remain.find('#');
-        if (cmd == std::string::npos) {toReturn.assign(remain); break;} // yoruma dair başka birşey yoksa sonucu dön
-        std::string val = remain.substr(0, cmd); // yorumu temizle
+        sep = remain.find('#');
+        if (sep == std::string::npos) {toReturn.assign(remain); break;} // yorum yoksa sonucu dön
+        std::string val = remain.substr(0, sep); // yorumu temizle
         toReturn.assign(val);
-        break; // sonucu dön
+        break;
     }
 
     if (toReturn.empty()) return false;
@@ -102,6 +124,5 @@ bool resolve_XDG_RUNTIME_DIR(const std::string& token, std::string& out_value) {
     out_value.assign(base_dir + "/" + sanitized_token + ".sock");
     return true;
 }
-
 
 } // namespace memg
