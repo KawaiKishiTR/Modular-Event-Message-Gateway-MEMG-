@@ -25,14 +25,14 @@ void dummy_loader(MemgPacket* packet) {};
 MemgNode::MemgNode(const NodeContext& ctx) 
     :   _ctx(ctx),
         _secure_key(s_generate_private_key()),
-        _poller(ctx.cfg->max_events),
-        _resolved_path(Registry::get_socket_file(ctx.cfg->token)) {
+        _poller(ctx.cfg->max_events) {
     
     s_instance = this;
     signal(SIGINT,  s_stop);
     signal(SIGTERM, s_stop);
 
     if (ctx.cfg->is_server) {
+        _resolved_path = Registry::get_socket_file(ctx.cfg->token);
         Registry::ensure_directory(_resolved_path);
         _socket.bind_server(_resolved_path, ctx.cfg->permissions);
         _socket.set_nonblocking(true);

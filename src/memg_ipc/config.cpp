@@ -9,6 +9,7 @@ namespace memg {
 
 inline std::string  ENV_FILE;
 inline std::string  CACHE_FILE;
+inline std::string  ROOT_ENV_FILE = "/etc/memg/endpoints.env";
 
 bool Registry::ensure_directory(const std::string& file_path) {
     size_t last_slash = file_path.find_last_of('/');
@@ -80,15 +81,8 @@ std::string Registry::get_env_file() {
         break;
     }
 
-    if (geteuid() == 0) {
-        toReturn.assign("/etc/memg/endpoints.env");
-        break;
-    }
+    toReturn.assign(ROOT_ENV_FILE);
     } while(0);
-
-    if (toReturn.empty()) {
-        throw std::runtime_error("env_file location cant resolved");
-    }
 
     ENV_FILE.assign(toReturn);
     return ENV_FILE;
@@ -131,7 +125,7 @@ std::string Registry::get_cache_file(const std::string& my_token) {
 
 std::string Registry::get_socket_file(const std::string& token) {
     std::string sanitized_token(sanitize_token(token));
-    std::string ENV_KEY(build_envkey(sanitized_token, "_TOKEN"));
+    std::string ENV_KEY(build_envkey(sanitized_token, "_SOCK"));
 
     std::string toReturn;
 
@@ -148,10 +142,16 @@ std::string Registry::get_socket_file(const std::string& token) {
     if (parse_env_file(ENV_KEY, env_file, toReturn)) {
         break;
     }
+
+    env_file.close();
+    env_file.open(ROOT_ENV_FILE);
+    if (parse_env_file(ENV_KEY, env_file, toReturn)) {
+        break;
+    }
     } while(0);
 
     if (toReturn.empty()) {
-        throw std::runtime_error("sock_file location cant resolved");
+        throw std::runtime_error("sock_file location cant resolved: " + sanitized_token + "(" + token + ")");
     }
 
     return toReturn;

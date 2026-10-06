@@ -58,7 +58,7 @@ UnixSocket& UnixSocket::operator=(UnixSocket&& other) noexcept {
 void UnixSocket::bind_server(const std::string& path, mode_t permissions) {
     if (path.empty() || path.length() >= sizeof(sockaddr_un::sun_path)) {
         errno = EINVAL;
-        throw_system_error("Soket yolu cok uzun veya gecersiz");
+        throw_system_error("Soket yolu cok uzun veya gecersiz: " + path);
     }
 
     _path = path;
