@@ -58,7 +58,7 @@ std::string build_envkey(std::string token, std::string suffix) {
 
 std::string sanitize_token(std::string token) {
     std::string result(token);
-    std::replace(result.begin(), result.end(), ".", "_");
+    std::replace(result.begin(), result.end(), '.', '_');
     return result;
 }
 
