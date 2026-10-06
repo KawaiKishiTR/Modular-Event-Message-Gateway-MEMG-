@@ -1,11 +1,15 @@
 #pragma once
 #include "memg_ipc/protocol.hpp"
+#include "memg_ipc/node.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <sys/types.h>
 #include <type_traits>
 #include <cstdint>
 #include <cstring>
+namespace memg::system {
+
+}
 
 namespace memg {
 
@@ -25,6 +29,9 @@ public:
         _buffer[5] = static_cast<uint8_t>((flags            >> 8) & 0xff);
         _buffer[6] = 0x00;
         _buffer[7] = 0x00;
+
+        std::string token = memg::MemgNode::s_get_instance()->get_ctx()->cfg->token; // get token of current memg instance
+        add_raw(system::SENDER, token.data(), static_cast<uint16_t>(token.size()));
     }
 
     PacketBuilder& add_raw(system::TagType tag, const void* data, system::LenType size) {
@@ -63,7 +70,7 @@ public:
         _buffer[6] = static_cast<uint8_t>( size       & 0xff);
         _buffer[7] = static_cast<uint8_t>((size >> 8) & 0xff);
 
-        return _buffer;
+        return std::move(_buffer);
     }
 
 private:
@@ -72,3 +79,29 @@ private:
 };
 
 } // namespace memg
+
+
+namespace memg::system {
+
+inline PacketBuilder make_command_packet(const std::string& my_token, Command command) {
+    return  PacketBuilder(static_cast<uint16_t>(PacketFlag::IN_SYSTEM))
+        .add(COMMAND, command);
+}
+
+inline MemgPacket make_heartbeat(const std::string& my_token) {
+    return make_command_packet(my_token, HEARTBEAT).build();
+}
+
+inline MemgPacket make_heartbeat_response(const std::string& my_token) {
+    return make_command_packet(my_token, HEARTBEAT_RESP).build();
+}
+
+inline MemgPacket make_subscribe(const std::string& my_token) {
+    return make_command_packet(my_token, SUBSCRIBE).build();
+}
+
+inline MemgPacket make_unsubscribe(const std::string& my_token) {
+    return make_command_packet(my_token, UNSUBSCRIBE).build();
+}
+
+} // namespace memg::system

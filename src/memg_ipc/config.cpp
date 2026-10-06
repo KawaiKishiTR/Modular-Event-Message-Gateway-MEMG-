@@ -1,12 +1,14 @@
 #include "memg_ipc/config.hpp"
 #include <cstdlib>
 #include <fstream>
-#include <iostream>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <algorithm>
 
 namespace memg {
+
+inline std::string  ENV_FILE;
+inline std::string  CACHE_FILE;
 
 bool Registry::ensure_directory(const std::string& file_path) {
     size_t last_slash = file_path.find_last_of('/');
@@ -21,72 +23,7 @@ bool Registry::ensure_directory(const std::string& file_path) {
     return true;
 }
 
-//resolve helper functions
-bool resolve_enviroment     (const std::string& token, std::string& out_value);
-bool resolve_config_file    (const std::string& token, std::string& out_value);
-bool parse_config_file      (const std::string& token, std::ifstream& file, std::string& out_value);
-
-bool resolve_XDG_RUNTIME_DIR(const std::string& token, std::string& out_value);
-
-// actual resolve function
-std::string Registry::resolve(const std::string& token) {
-    std::string toReturn;
-
-    do {
-        // 1. Ortam Değişkeni Kontrolü (Örn: MEMG_TOKEN_IO_MEMG_RGB=/custom/path.sock)
-        if (resolve_enviroment(token, toReturn)) break;
-
-        // 2. Config Dosyası Kontrolü (~/.config/memg/endpoints.conf)
-        if (resolve_config_file(token, toReturn)) break;
-
-        // 3. Fallback: XDG_RUNTIME_DIR veya /tmp/memg/
-        if (resolve_XDG_RUNTIME_DIR(token, toReturn)) break;
-    } while (0);
-
-    if (toReturn.empty()) {
-        throw std::runtime_error("No matching resolve function can resolve the token: " + token);
-    }
-
-    std::cout << "[DEBUG] token: " << token << " resolved to: " << toReturn << "\n";
-    return toReturn;
-}
-
-bool resolve_enviroment(const std::string& token, std::string& out_value) {
-    std::string env_var = "MEMG_TOKEN_" + token;
-    std::replace(env_var.begin(), env_var.end(), '.', '_');
-    const char* env_val = std::getenv(env_var.c_str());
-    if (env_val && env_val[0] != '\0') {
-        out_value.assign(env_val);
-        return true;
-    }
-    return false;
-}
-
-bool resolve_config_file(const std::string& token, std::string& out_value) {
-    const char* home = std::getenv("HOME");
-    std::ifstream file;
-    std::string toReturn;
-
-    if (home && home[0] != '\0') {
-        file.open(std::string(home) + "/.config/memg/endpoints.conf");
-    }
-
-    if (!file.is_open()) {
-        file.open("/etc/memg/endpoints.conf");
-    }
-
-    if (!file.is_open()) {
-        return false;
-    }
-
-    parse_config_file(token, file, toReturn);
-
-    if (toReturn.empty()) return false;
-    out_value.assign(toReturn);
-    return true;
-}
-
-bool parse_config_file(const std::string& token, std::ifstream& file, std::string& out_value) {
+bool parse_env_file(const std::string& token, std::ifstream& file, std::string& out_value) {
     std::string line;
     std::string toReturn;
     while (std::getline(file, line)) {
@@ -110,19 +47,114 @@ bool parse_config_file(const std::string& token, std::ifstream& file, std::strin
     return true;
 }
 
-bool resolve_XDG_RUNTIME_DIR(const std::string& token, std::string& out_value) {
-    // 3. Fallback: XDG_RUNTIME_DIR veya /tmp/memg/
-    const char* runtime_dir = std::getenv("XDG_RUNTIME_DIR");
-    std::string base_dir = (runtime_dir && runtime_dir[0] != '\0')
-                           ? std::string(runtime_dir) + "/memg" 
-                           : "/tmp/memg";
+bool is_have_home() {
+    char* home = std::getenv("HOME");
+    return (home && home[0] != '\0');
+}
 
-    // Token içindeki '.' karakterlerini '_' yapıp soket ismi üret
-    std::string sanitized_token = token;
-    std::replace(sanitized_token.begin(), sanitized_token.end(), '.', '_');
+std::string build_envkey(std::string token, std::string suffix) {
+    return ("MEMG_" + token + suffix);
+}
 
-    out_value.assign(base_dir + "/" + sanitized_token + ".sock");
-    return true;
+std::string sanitize_token(std::string token) {
+    std::string result(token);
+    std::replace(result.begin(), result.end(), ".", "_");
+    return result;
+}
+
+std::string Registry::get_env_file() {
+    if (!ENV_FILE.empty()) return ENV_FILE;
+    std::string toReturn;
+
+    do {
+    char* result;
+    result = std::getenv("MEMG_ENV_FILE");
+    if (result && result[0] != '\0') {
+        toReturn.assign(result);
+        break;
+    }
+
+    result = std::getenv("HOME");
+    if (result && result[0] != '\0') {
+        toReturn.assign(std::string(result) + "/.config/memg/endpoints.env");
+        break;
+    }
+
+    if (geteuid() == 0) {
+        toReturn.assign("/etc/memg/endpoints.env");
+        break;
+    }
+    } while(0);
+
+    if (toReturn.empty()) {
+        throw std::runtime_error("env_file location cant resolved");
+    }
+
+    ENV_FILE.assign(toReturn);
+    return ENV_FILE;
+}
+
+std::string Registry::get_cache_file(const std::string& my_token) {
+    if (!CACHE_FILE.empty()) return CACHE_FILE;
+    std::string sanitized_token(sanitize_token(my_token));
+    std::string ENV_KEY(build_envkey(sanitized_token, "_CACHE_FILE"));
+
+    std::string toReturn;
+
+    do {
+    char* result;
+    result = std::getenv(ENV_KEY.c_str());
+    if (result && result[0] != '\0') {
+        toReturn.assign(result);
+        break;
+    }
+
+    result = std::getenv("HOME");
+    if (result && result[0] != '\0') {
+        toReturn.assign(std::string(result) + "/.cache/memg/" + sanitized_token + "/dump.cache");
+        break;
+    }
+
+    if (geteuid() == 0) {
+        toReturn.assign("/tmp/memg/" + sanitized_token + "/dump.cache");
+        break;
+    }
+    } while(0);
+
+    if (toReturn.empty()) {
+        throw std::runtime_error("cache_file location cant resolved");
+    }
+
+    CACHE_FILE.assign(toReturn);
+    return CACHE_FILE;
+}
+
+std::string Registry::get_socket_file(const std::string& token) {
+    std::string sanitized_token(sanitize_token(token));
+    std::string ENV_KEY(build_envkey(sanitized_token, "_TOKEN"));
+
+    std::string toReturn;
+
+    do {
+    char* result;
+    result = std::getenv(ENV_KEY.c_str());
+    if (result && result[0] != '\0') {
+        toReturn.assign(result);
+        break;
+    }
+
+    std::ifstream env_file;
+    env_file.open(get_env_file());
+    if (parse_env_file(ENV_KEY, env_file, toReturn)) {
+        break;
+    }
+    } while(0);
+
+    if (toReturn.empty()) {
+        throw std::runtime_error("sock_file location cant resolved");
+    }
+
+    return toReturn;
 }
 
 } // namespace memg

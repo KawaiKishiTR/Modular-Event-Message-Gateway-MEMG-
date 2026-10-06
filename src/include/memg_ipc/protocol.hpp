@@ -2,16 +2,17 @@
 
 #include <cstdint>
 #include <vector>
-#include <string>
 
-/*
-[ 2B Magic ('MG') ] [ 2B Version ] [ 2B Flags ] [ 2B Body Length ] = 8 BAYT
+/* Base structure of memg packet
+HEADER :[ 2B Magic ('MG') ] [ 2B Version ] [ 2B Flags ] [ 2B Body Length ] = 8B
+BODY: SENDER - self token
+
 */
 
 namespace memg {
 
 inline constexpr uint16_t PROTOCOL_MAGIC        = 0x4D47;
-inline constexpr uint16_t PROTOCOL_VERSION      = 0x0002;
+inline constexpr uint16_t PROTOCOL_VERSION      = 0x0003;
 inline constexpr uint16_t PROTOCOL_TOKEN_SIZE   = 48;
 
 typedef std::vector<uint8_t> MemgPacket;
@@ -76,6 +77,8 @@ typedef uint16_t LenType;
 enum Tag : uint16_t {
     TOKEN       = 0x8001,
     COMMAND     = 0x8002,
+    SECURE_KEY  = 0x8003,
+    SENDER      = 0x8004,
 };
 
 enum Command : uint16_t {
@@ -84,39 +87,5 @@ enum Command : uint16_t {
     HEARTBEAT       = 0x0003,
     HEARTBEAT_RESP  = 0x0004,
 };
-
-} // namespace memg::system
-
-#include "memg_ipc/PacketBuilder.hpp"
-namespace memg::system {
-
-
-inline MemgPacket make_heartbeat(const std::string& my_token) {
-    return PacketBuilder(static_cast<uint16_t>(PacketFlag::IN_SYSTEM))
-        .add(COMMAND, HEARTBEAT)
-        .add_raw(TOKEN, my_token.data(), static_cast<uint16_t>(my_token.size()))
-        .build();
-}
-
-inline MemgPacket make_heartbeat_response(const std::string& my_token) {
-    return PacketBuilder(static_cast<uint16_t>(PacketFlag::IN_SYSTEM))
-        .add(COMMAND, HEARTBEAT_RESP)
-        .add_raw(TOKEN, my_token.data(), static_cast<uint16_t>(my_token.size()))
-        .build();
-}
-
-inline MemgPacket make_subscribe(const std::string& my_token) {
-    return PacketBuilder(static_cast<uint16_t>(PacketFlag::IN_SYSTEM))
-        .add(COMMAND, SUBSCRIBE)
-        .add_raw(TOKEN, my_token.data(), static_cast<uint16_t>(my_token.size()))
-        .build();
-}
-
-inline MemgPacket make_unsubscribe(const std::string& my_token) {
-    return PacketBuilder(static_cast<uint16_t>(PacketFlag::IN_SYSTEM))
-        .add(COMMAND, UNSUBSCRIBE)
-        .add_raw(TOKEN, my_token.data(), static_cast<uint16_t>(my_token.size()))
-        .build();
-}
 
 } // namespace memg::system

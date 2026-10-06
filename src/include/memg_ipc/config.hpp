@@ -15,11 +15,13 @@ struct ServiceConfig {
 
 class Registry {
 public:
-    // Token'ı (/run/user/$UID/memg/... veya configten) mutlak dosya yoluna çevirir
-    static std::string resolve(const std::string& token);
 
     // Servis soketinin oluşturulacağı ana dizini (/tmp/memg veya $XDG_RUNTIME_DIR/memg) garanti eder
     static bool ensure_directory(const std::string& file_path);
+
+    static std::string get_socket_file(const std::string& token);
+    static std::string get_cache_file (const std::string& token);
+    static std::string get_env_file   ();
 };
 
 } // namespace memg

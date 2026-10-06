@@ -1,15 +1,18 @@
 #pragma once
-
 #include "memg_ipc/protocol.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <string>
 
 
 namespace memg {
 
 class PacketReader {
 public:
+    inline PacketReader(const std::vector<uint8_t>* packet) 
+    :   PacketReader(packet->data(), packet->size()) {}
+
     PacketReader(const uint8_t* data, size_t size) : _data(data), _size(size) {}
 
     bool is_valid() const {
