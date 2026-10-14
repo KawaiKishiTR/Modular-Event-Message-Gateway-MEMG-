@@ -28,12 +28,19 @@ public:
     }
 
     template<typename ValType>
-    bool get(uint16_t tag, ValType& out_value) const {
+    inline bool get(uint16_t tag, ValType& out_value) {
+        return get(tag, out_value, 0);
+    }
+
+    template<typename ValType>
+    bool get(uint16_t tag, ValType& out_value, uint32_t index) const {
         size_t offset = sizeof(PacketHeader);
+        uint32_t hit_counter = 0;
         while (not_reached_end(offset)) {
 
             if (offset + get_current_len(offset) + get_TL_lenght() > _size) {return false;} // paket boyutu aşılıyorsa çık
             if (get_current_tag(offset) != tag) {offset += get_current_len(offset) + get_TL_lenght();continue;} // doğru tag değilse atla
+            if (hit_counter != index) {hit_counter++; continue;}
 
             return do_memcopy(offset, out_value); //doğru tag ise oku
         }
