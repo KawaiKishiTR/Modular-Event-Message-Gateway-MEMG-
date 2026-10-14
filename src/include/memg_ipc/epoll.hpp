@@ -1,5 +1,6 @@
 #pragma once
 
+#include "memg_ipc/config.hpp"
 #include <sys/epoll.h>
 #include <vector>
 
@@ -8,7 +9,7 @@ namespace memg {
 
 class Epoll {
 public:
-    explicit Epoll(int max_events = 64);
+    explicit Epoll(EpollConfig* cfg);
     ~Epoll();
 
     Epoll(const Epoll&) = delete;
@@ -21,13 +22,14 @@ public:
     void remove(int fd);
 
     // Kaç adet event geldiğini döner (nfds). Hata olursa sistem hatası fırlatır.
-    int wait(int timeout_ms = -1);
+    int wait();
 
     // Gelen event'lere erişim:
     const epoll_event& get_event(int index) const { return _events[index]; }
     int get_fd() const noexcept { return _epoll_fd; }
 private:
     int _epoll_fd{-1};
+    EpollConfig* _cfg;
     std::vector<epoll_event> _events;
 };
 

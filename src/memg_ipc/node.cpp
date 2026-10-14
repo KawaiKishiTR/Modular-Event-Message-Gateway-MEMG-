@@ -24,20 +24,15 @@ void dummy_loader(MemgPacket* packet) {};
 // ===================
 MemgNode::MemgNode(const NodeContext& ctx) 
     :   _ctx(ctx),
-        _secure_key(s_generate_private_key()),
-        _poller(ctx.cfg->max_events) {
+        _poller(ctx.cfg->epoll),
+        _socket(ctx.cfg->socket),
+        _secure_key(s_generate_private_key()) {
     
     s_instance = this;
     signal(SIGINT,  s_stop);
     signal(SIGTERM, s_stop);
 
-    if (ctx.cfg->is_server) {
-        _resolved_path = Registry::get_socket_file(ctx.cfg->token);
-        Registry::ensure_directory(_resolved_path);
-        _socket.bind_server(_resolved_path, ctx.cfg->permissions);
-        _socket.set_nonblocking(true);
-        _poller.add(_socket.get_fd(), EPOLLIN);
-    }
+    _poller.add(_socket.get_fd(), EPOLLIN);
 }
 
 MemgNode::~MemgNode() {
@@ -73,12 +68,12 @@ void MemgNode::publish(const void* data, size_t size) {
 }
 
 bool MemgNode::subscribe(const std::string& target_service_token) {
-    MemgPacket  pkt  = system::make_subscribe(_ctx.cfg->token);
+    MemgPacket  pkt  = system::make_subscribe(_ctx.cfg->socket->token);
     return send_vector(target_service_token, &pkt);
 }
 
 bool MemgNode::unsubscribe(const std::string& target_service_token) {
-    MemgPacket  pkt  = system::make_unsubscribe(_ctx.cfg->token);
+    MemgPacket  pkt  = system::make_unsubscribe(_ctx.cfg->socket->token);
     return send_vector(target_service_token, &pkt);
 }
 
@@ -110,7 +105,7 @@ bool MemgNode::on_system_packet_unsubscribe(const MemgPacket* packet) {
 }
 
 bool MemgNode::on_system_packet_heartbeat(const MemgPacket* packet) {
-    MemgPacket  pkt  = system::make_heartbeat_response(_ctx.cfg->token);
+    MemgPacket  pkt  = system::make_heartbeat_response(_ctx.cfg->socket->token);
 
     std::string sender;
     PacketReader(packet).get(system::SENDER, sender);
@@ -143,7 +138,7 @@ void MemgNode::run() {
     MemgPacket buffer(4096);
 
     while (_running) {
-        int nfds = _poller.wait(_ctx.cfg->timeout_ms);
+        int nfds = _poller.wait();
 
         if (s_stop_signal_flag) break;
         if (nfds < 0) continue; // hata kodu gelmişse devam et
@@ -185,7 +180,7 @@ void MemgNode::dump_cache() {
     MemgPacket dump_value = _ctx.on_dump();
     std::ofstream file;
 
-    std::string file_path(Registry::get_cache_file(_ctx.cfg->token));
+    std::string file_path(Registry::get_cache_file(_ctx.cfg->socket->token));
     Registry::ensure_directory(file_path);
 
     file.open(file_path);
@@ -199,7 +194,7 @@ void MemgNode::dump_cache() {
 void MemgNode::load_cache() {
     std::ifstream file;
 
-    std::string file_path(Registry::get_cache_file(_ctx.cfg->token));
+    std::string file_path(Registry::get_cache_file(_ctx.cfg->socket->token));
     Registry::ensure_directory(file_path);
 
     file.open(file_path);

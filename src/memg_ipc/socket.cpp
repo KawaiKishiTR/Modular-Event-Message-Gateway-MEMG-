@@ -25,11 +25,15 @@ int is_recv_error(ssize_t n) {
 
 namespace memg {
 
-UnixSocket::UnixSocket() {
+UnixSocket::UnixSocket(SocketConfig* cfg)
+    : _cfg(cfg) {
     // SOCK_CLOEXEC: Fork edilen alt process'lere soketin miras kalmasını engeller
+    _path = Registry::get_socket_file(cfg->token);
+    Registry::ensure_directory(_path);
+    
     _fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
     if (_fd < 0) {
-        throw_system_error("Unix Domain Socket acilamadi");
+        throw_system_error("[UnixSocket/ERROR] [Constructor] Unix Domain Socket acilamadi");
     }
 }
 
@@ -38,9 +42,8 @@ UnixSocket::~UnixSocket() {
 }
 
 UnixSocket::UnixSocket(UnixSocket&& other) noexcept 
-    : _fd(other._fd), _path(std::move(other._path)), _is_server(other._is_server) {
+    : _fd(other._fd), _path(std::move(other._path)) {
     other._fd = -1;
-    other._is_server = false;
 }
 
 UnixSocket& UnixSocket::operator=(UnixSocket&& other) noexcept {
@@ -48,21 +51,16 @@ UnixSocket& UnixSocket::operator=(UnixSocket&& other) noexcept {
         close_socket();
         _fd = other._fd;
         _path = std::move(other._path);
-        _is_server = other._is_server;
         other._fd = -1;
-        other._is_server = false;
     }
     return *this;
 }
 
-void UnixSocket::bind_server(const std::string& path, mode_t permissions) {
-    if (path.empty() || path.length() >= sizeof(sockaddr_un::sun_path)) {
+void UnixSocket::bind_server() {
+    if (_path.empty() || _path.length() >= sizeof(sockaddr_un::sun_path)) {
         errno = EINVAL;
-        throw_system_error("Soket yolu cok uzun veya gecersiz: " + path);
+        throw_system_error("[UnixSocket/ERROR] [bind_server] Soket yolu cok uzun veya gecersiz: " + _path);
     }
-
-    _path = path;
-    _is_server = true;
 
     // Önceki process çöküşünden kalan eski soket dosyasını sil
     unlink(_path.c_str());
@@ -72,24 +70,24 @@ void UnixSocket::bind_server(const std::string& path, mode_t permissions) {
     std::strncpy(addr.sun_path, _path.c_str(), sizeof(addr.sun_path) - 1);
 
     if (bind(_fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) < 0) {
-        throw_system_error("Soket bind basarisiz: " + _path);
+        throw_system_error("[UnixSocket/ERROR] [bind_server] Soket bind basarisiz: " + _path);
     }
 
     // Normal kullanıcıların (userspace) root process'e yazabilmesi için izinleri ayarla
-    if (chmod(_path.c_str(), permissions) < 0) {
-        throw_system_error("Soket dosya izinleri ayarlanamadi");
+    if (chmod(_path.c_str(), _cfg->permissions) < 0) {
+        throw_system_error("[UnixSocket/ERROR] [bind_server] Soket dosya izinleri ayarlanamadi");
     }
 }
 
-void UnixSocket::set_nonblocking(bool enable) {
+void UnixSocket::set_nonblocking() {
     int flags = fcntl(_fd, F_GETFL, 0);
     if (flags < 0) {
-        throw_system_error("fcntl F_GETFL hatasi");
+        throw_system_error("[UnixSocket/ERROR] [set_nonblocking] fcntl F_GETFL hatasi");
     }
 
-    flags = enable ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
+    flags = _cfg->set_nonblocking ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
     if (fcntl(_fd, F_SETFL, flags) < 0) {
-        throw_system_error("fcntl F_SETFL hatasi");
+        throw_system_error("[UnixSocket/ERROR] [set_nonblocking] fcntl F_SETFL hatasi");
     }
 }
 
@@ -187,10 +185,9 @@ void UnixSocket::close_socket() {
         close(_fd);
         _fd = -1;
     }
-    if (_is_server && !_path.empty()) {
+    if (_cfg->is_server && !_path.empty()) {
         unlink(_path.c_str());
         _path.clear();
-        _is_server = false;
     }
 }
 

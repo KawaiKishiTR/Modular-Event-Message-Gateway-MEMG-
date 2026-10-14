@@ -5,12 +5,21 @@
 
 namespace memg {
 
+struct SocketConfig {
+    bool        is_server{true};
+    bool        set_nonblocking{true};
+    mode_t      permissions{0666};
+    std::string token;
+};
+
+struct EpollConfig {
+    int         timeout_ms{16};         // -1: Sonsuz uyku, >0: Periyodik tick (animasyon/timer)
+    uint32_t    max_events{64};
+};
+
 struct ServiceConfig {
-    std::string token; // Örn: "io.memg.service.rgb"
-    bool is_server{false};      // Dinleyici mi, istemci mi?
-    int timeout_ms{16};         // -1: Sonsuz uyku, >0: Periyodik tick (animasyon/timer)
-    uint32_t max_events{64};
-    mode_t permissions{0666};   // Root/User izinleri
+    EpollConfig*    epoll;
+    SocketConfig*   socket;
 };
 
 class Registry {

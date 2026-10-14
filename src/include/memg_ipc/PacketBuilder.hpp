@@ -30,7 +30,7 @@ public:
         _buffer[6] = 0x00;
         _buffer[7] = 0x00;
 
-        std::string token = memg::MemgNode::s_get_instance()->get_ctx()->cfg->token; // get token of current memg instance
+        std::string token = memg::MemgNode::s_get_instance()->get_ctx()->cfg->socket->token; // get token of current memg instance
         add_raw(system::SENDER, token.data(), static_cast<uint16_t>(token.size()));
     }
 
