@@ -6,11 +6,11 @@
 
 namespace memg::apis::rgb {
 
-inline constexpr uint16_t RGB_API_VERSION = 0x0001; 
+inline constexpr uint64_t RGB_API_SPECIFIER = 0x7267625F5F617069; // "rgb__api"
+inline constexpr uint16_t RGB_API_VERSION   = 0x0001;
 
 // RGB Servisine Özel TLV Tag Tanımları
 enum Tag : system::TagType {
-    API_VERSION     = 0xffff,
     MODE            = 0x0001, // Çalışma Modu (Statik, Nefes Alma, Müzik)
     RED             = 0x000a,
     GREEN           = 0x000b,
@@ -35,7 +35,8 @@ struct ColorRGB {
 
 inline PacketBuilder make_packet() {
     PacketBuilder builder;
-    builder.add(API_VERSION, RGB_API_VERSION);
+    builder.add(system::API_TYPE, RGB_API_SPECIFIER);
+    builder.add(system::API_VERSION, RGB_API_VERSION);
     return builder;
 }
 
