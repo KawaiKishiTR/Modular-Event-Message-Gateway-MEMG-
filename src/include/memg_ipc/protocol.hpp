@@ -13,7 +13,7 @@ namespace memg {
 
 inline constexpr uint16_t PROTOCOL_MAGIC        = 0x4D47;
 inline constexpr uint16_t PROTOCOL_VERSION      = 0x0003;
-inline constexpr uint16_t PROTOCOL_TOKEN_SIZE   = 48;
+inline constexpr uint64_t PROTOCOL_SPECIFIER    = 0x50524F544F434F4C; // "PROTOCOL"
 
 typedef std::vector<uint8_t> MemgPacket;
 
@@ -73,12 +73,16 @@ namespace memg::system {
     
 typedef uint16_t TagType;
 typedef uint16_t LenType;
+typedef uint64_t ApiSpecType;
+typedef uint16_t ApiVerType;
     
-enum Tag : uint16_t {
-    TOKEN       = 0x8001,
-    COMMAND     = 0x8002,
-    SECURE_KEY  = 0x8003,
-    SENDER      = 0x8004,
+enum Tag : TagType {
+    TOKEN       = 0xffff,
+    COMMAND     = 0xfffe,
+    SECURE_KEY  = 0xfffd,
+    SENDER      = 0xfffc,
+    API_TYPE    = 0xfffb,
+    API_VERSION = 0xfffa,
 };
 
 enum Command : uint16_t {

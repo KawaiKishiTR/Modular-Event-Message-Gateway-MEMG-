@@ -121,8 +121,18 @@ bool MemgNode::on_system_packet_heartbeat_resp(const MemgPacket* packet) {
 }
 
 bool MemgNode::on_system_packet(const MemgPacket* packet) {
+    PacketReader r(packet);
+    system::ApiSpecType api_spec;
+    system::ApiVerType api_ver;
+    if (r.get(system::API_TYPE, api_spec)) {
+        if (api_spec != PROTOCOL_SPECIFIER) return false;
+    }
+    if (r.get(system::API_VERSION, api_ver)) {
+        if (api_ver != PROTOCOL_VERSION) return false;
+    }
+    
     uint16_t command;
-    PacketReader(packet).get(system::COMMAND, command);
+    r.get(system::COMMAND, command);
 
     switch (command) {
         case system::SUBSCRIBE:         return on_system_packet_subscribe(packet);

@@ -3,6 +3,7 @@
 #include "memg_ipc/node.hpp"
 #include <algorithm>
 #include <cstddef>
+#include <iostream>
 #include <sys/types.h>
 #include <type_traits>
 #include <cstdint>
@@ -15,6 +16,11 @@ namespace memg {
 
 class PacketBuilder {
 public:
+    explicit PacketBuilder(system::ApiSpecType api_spec, system::ApiVerType api_ver, uint16_t flags = 0) 
+        :   PacketBuilder(flags) {
+        add(system::API_TYPE, api_spec);
+        add(system::API_VERSION, api_ver);
+    }
     explicit PacketBuilder(uint16_t flags = 0) {
         // 8byte header için ayır
         _buffer.resize(512);
@@ -29,9 +35,12 @@ public:
         _buffer[5] = static_cast<uint8_t>((flags            >> 8) & 0xff);
         _buffer[6] = 0x00;
         _buffer[7] = 0x00;
-
-        std::string token = memg::MemgNode::s_get_instance()->get_ctx()->cfg->socket->token; // get token of current memg instance
-        add_raw(system::SENDER, token.data(), static_cast<uint16_t>(token.size()));
+        try {
+            std::string token = memg::MemgNode::s_get_instance()->get_ctx()->cfg->socket->token; // get token of current memg instance
+            add_raw(system::SENDER, token.data(), static_cast<uint16_t>(token.size()));
+        } catch (std::exception& e) {
+            std::cout << "[PacketBuilder/WARN] [Constructor] Memg instance bulunamadi\n";
+        }
     }
 
     PacketBuilder& add_raw(system::TagType tag, const void* data, system::LenType size) {
@@ -84,7 +93,7 @@ private:
 namespace memg::system {
 
 inline PacketBuilder make_command_packet(const std::string& my_token, Command command) {
-    return  PacketBuilder(static_cast<uint16_t>(PacketFlag::IN_SYSTEM))
+    return  PacketBuilder(PROTOCOL_SPECIFIER, PROTOCOL_VERSION, static_cast<uint16_t>(PacketFlag::IN_SYSTEM))
         .add(COMMAND, command);
 }
 
