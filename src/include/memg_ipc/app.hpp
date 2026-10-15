@@ -32,7 +32,7 @@ public:
 
         // 1. Donanim / servis baslatma kancasi (Setup hook)
         if (!self->setup()) {
-            std::cerr << "[MEMG-APP] Baslatma hatasi, servis durduruluyor.\n";
+            std::cerr << "[MemgApp/ERROR] [run] Baslatma hatasi, servis durduruluyor.\n";
             return;
         }
 

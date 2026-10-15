@@ -67,7 +67,6 @@ private:
     bool on_system_packet_unsubscribe       (const MemgPacket* packet);
     bool on_system_packet_heartbeat         (const MemgPacket* packet);
     bool on_system_packet_heartbeat_resp    (const MemgPacket* packet);
-    bool on_system_packet_shutdown          (const MemgPacket* packet);
 
     void dump_cache();
     void load_cache();

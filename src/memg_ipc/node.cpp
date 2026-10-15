@@ -59,7 +59,7 @@ void MemgNode::publish(const void* data, size_t size) {
         const std::string& sub_token = *it;
         bool ok = send_raw(sub_token, data, size);
         if (!ok) {
-            std::cout << "[MEMG] Aboneye erisilemedi, listeden siliniyor: " << sub_token << "\n";
+            std::cout << "[MemgNode/INFO] [publish] Aboneye erisilemedi, listeden siliniyor: " << sub_token << "\n";
             it = _subscribers.erase(it);
         } else {
             ++it;
