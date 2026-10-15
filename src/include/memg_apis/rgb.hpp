@@ -34,10 +34,7 @@ struct ColorRGB {
 #pragma pack(pop)
 
 inline PacketBuilder make_packet() {
-    PacketBuilder builder;
-    builder.add(system::API_TYPE, RGB_API_SPECIFIER);
-    builder.add(system::API_VERSION, RGB_API_VERSION);
-    return builder;
+    return PacketBuilder(RGB_API_SPECIFIER, RGB_API_VERSION);
 }
 
 // 1. Statik Renk Paketi Üretici (Helper Factory)
