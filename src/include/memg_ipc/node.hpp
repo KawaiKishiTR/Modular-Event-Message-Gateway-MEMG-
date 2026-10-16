@@ -43,9 +43,9 @@ public:
     void stop();
 
     // sender functions
-    bool send_raw(const std::string& target_token, const void* data, size_t size);
+    bool send(const std::string& target_token, const void* data, size_t size);
     template<typename T>
-    bool send_vector(const std::string& target_token, const std::vector<T>* data) {
+    bool send(const std::string& target_token, const std::vector<T>* data) {
         return send_raw(target_token, data->data(), (data->size() * sizeof(T)));
     }
 

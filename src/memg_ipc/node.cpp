@@ -42,7 +42,7 @@ MemgNode::~MemgNode() {
 // ==============
 // === SENDER ===
 // ==============
-bool MemgNode::send_raw(const std::string& target_token, const void* data, size_t size) {
+bool MemgNode::send(const std::string& target_token, const void* data, size_t size) {
     std::string target_path = Registry::get_socket_file(target_token);
     try {
         ssize_t sent = _socket.send_to(target_path, data, size);
@@ -57,7 +57,7 @@ void MemgNode::publish(const void* data, size_t size) {
     auto it = _subscribers.begin();
     while (it != _subscribers.end()) {
         const std::string& sub_token = *it;
-        bool ok = send_raw(sub_token, data, size);
+        bool ok = send(sub_token, data, size);
         if (!ok) {
             std::cout << "[MemgNode/INFO] [publish] Aboneye erisilemedi, listeden siliniyor: " << sub_token << "\n";
             it = _subscribers.erase(it);
@@ -69,12 +69,12 @@ void MemgNode::publish(const void* data, size_t size) {
 
 bool MemgNode::subscribe(const std::string& target_service_token) {
     MemgPacket  pkt  = system::make_subscribe(_ctx.cfg->socket->token);
-    return send_vector(target_service_token, &pkt);
+    return send(target_service_token, &pkt);
 }
 
 bool MemgNode::unsubscribe(const std::string& target_service_token) {
     MemgPacket  pkt  = system::make_unsubscribe(_ctx.cfg->socket->token);
-    return send_vector(target_service_token, &pkt);
+    return send(target_service_token, &pkt);
 }
 
 // =================
@@ -110,7 +110,7 @@ bool MemgNode::on_system_packet_heartbeat(const MemgPacket* packet) {
     std::string sender;
     PacketReader(packet).get(system::SENDER, sender);
 
-    return send_vector(sender, &pkt);
+    return send(sender, &pkt);
 }
 
 bool MemgNode::on_system_packet_heartbeat_resp(const MemgPacket* packet) {
