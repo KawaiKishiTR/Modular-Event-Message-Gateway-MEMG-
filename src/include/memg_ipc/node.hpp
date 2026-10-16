@@ -46,7 +46,7 @@ public:
     bool send(const std::string& target_token, const void* data, size_t size);
     template<typename T>
     bool send(const std::string& target_token, const std::vector<T>* data) {
-        return send_raw(target_token, data->data(), (data->size() * sizeof(T)));
+        return send(target_token, data->data(), (data->size() * sizeof(T)));
     }
 
     // sub/pub fonksiyonları
