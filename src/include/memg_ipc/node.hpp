@@ -45,7 +45,7 @@ public:
     // sender functions
     bool send(const std::string& target_token, const void* data, size_t size);
     template<typename T>
-    bool send(const std::string& target_token, const std::vector<T>* data) {
+    inline bool send(const std::string& target_token, const std::vector<T>* data) {
         return send(target_token, data->data(), (data->size() * sizeof(T)));
     }
 
@@ -53,6 +53,10 @@ public:
     bool subscribe(const std::string& target_service_token);
     bool unsubscribe(const std::string& target_service_token);
     void publish(const void* data, size_t size);
+    template<typename T>
+    inline void publish(const std::vector<T>* data) {
+        return publish(data->data(), data->size() * sizeof(T));
+    }
 
     static MemgNode* s_get_instance();
     static void s_stop(int /*sig*/);
