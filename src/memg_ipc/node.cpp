@@ -68,12 +68,12 @@ void MemgNode::publish(const void* data, size_t size) {
 }
 
 bool MemgNode::subscribe(const std::string& target_service_token) {
-    MemgPacket  pkt  = system::make_subscribe(_ctx.cfg->socket->token);
+    MemgPacket  pkt  = system::make_subscribe();
     return send(target_service_token, &pkt);
 }
 
 bool MemgNode::unsubscribe(const std::string& target_service_token) {
-    MemgPacket  pkt  = system::make_unsubscribe(_ctx.cfg->socket->token);
+    MemgPacket  pkt  = system::make_unsubscribe();
     return send(target_service_token, &pkt);
 }
 
@@ -105,7 +105,7 @@ bool MemgNode::on_system_packet_unsubscribe(const MemgPacket* packet) {
 }
 
 bool MemgNode::on_system_packet_heartbeat(const MemgPacket* packet) {
-    MemgPacket  pkt  = system::make_heartbeat_response(_ctx.cfg->socket->token);
+    MemgPacket  pkt  = system::make_heartbeat_response();
 
     std::string sender;
     PacketReader(packet).get(system::SENDER, sender);

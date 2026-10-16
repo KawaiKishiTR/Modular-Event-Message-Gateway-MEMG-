@@ -92,25 +92,25 @@ private:
 
 namespace memg::system {
 
-inline PacketBuilder make_command_packet(const std::string& my_token, Command command) {
+inline PacketBuilder make_command_packet(Command command) {
     return  PacketBuilder(PROTOCOL_SPECIFIER, PROTOCOL_VERSION, static_cast<uint16_t>(PacketFlag::IN_SYSTEM))
         .add(COMMAND, command);
 }
 
-inline MemgPacket make_heartbeat(const std::string& my_token) {
-    return make_command_packet(my_token, HEARTBEAT).build();
+inline MemgPacket make_heartbeat() {
+    return make_command_packet(HEARTBEAT).build();
 }
 
-inline MemgPacket make_heartbeat_response(const std::string& my_token) {
-    return make_command_packet(my_token, HEARTBEAT_RESP).build();
+inline MemgPacket make_heartbeat_response() {
+    return make_command_packet(HEARTBEAT_RESP).build();
 }
 
-inline MemgPacket make_subscribe(const std::string& my_token) {
-    return make_command_packet(my_token, SUBSCRIBE).build();
+inline MemgPacket make_subscribe() {
+    return make_command_packet(SUBSCRIBE).build();
 }
 
-inline MemgPacket make_unsubscribe(const std::string& my_token) {
-    return make_command_packet(my_token, UNSUBSCRIBE).build();
+inline MemgPacket make_unsubscribe() {
+    return make_command_packet(UNSUBSCRIBE).build();
 }
 
 } // namespace memg::system
