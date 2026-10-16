@@ -37,13 +37,13 @@ public:
         _buffer[7] = 0x00;
         try {
             std::string token = memg::MemgNode::s_get_instance()->get_ctx()->cfg->socket->token; // get token of current memg instance
-            add_raw(system::SENDER, token.data(), static_cast<uint16_t>(token.size()));
+            add(system::SENDER, token.data(), static_cast<uint16_t>(token.size()));
         } catch (std::exception& e) {
             std::cout << "[PacketBuilder/WARN] [Constructor] Memg instance bulunamadi\n";
         }
     }
 
-    PacketBuilder& add_raw(system::TagType tag, const void* data, system::LenType size) {
+    PacketBuilder& add(system::TagType tag, const void* data, system::LenType size) {
         size_t entry_size = size + sizeof(tag) + sizeof(size);
 
         if (_offset + entry_size > _buffer.size()) {
@@ -67,7 +67,7 @@ public:
     template<typename T>
     PacketBuilder& add(uint16_t tag, const T& value) {
         static_assert(std::is_trivially_copyable<T>::value, "Tip trivial olmali");
-        return add_raw(tag, &value, static_cast<uint16_t>(sizeof(T)));
+        return add(tag, &value, static_cast<uint16_t>(sizeof(T)));
     }
 
     const MemgPacket& build() {
